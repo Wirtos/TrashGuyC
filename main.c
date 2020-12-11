@@ -106,14 +106,17 @@ static inline size_t utf8_distance(const char *begin, const char *end) {
     return dist;
 }
 
-TrashGuyState tguy_init(CString text, int starting_distance) {
+/*
+ * initialize state from array of strings
+ */
+TrashGuyState tguy_init_arr(const CString arr[], size_t len, int starting_distance) {
     TrashGuyState st = {
         .a1 = (starting_distance + 1) * 2,
         .sprite_right = CStringConst("(> ^_^)>"),
         .sprite_left = CStringConst("<(^_^ <)"),
         .sprite_can = CStringConst("\xf0\x9f\x97\x91"),
         .text = {
-            .len = utf8_distance(&text.str[0], &text.str[text.len])
+            .len = len,
         },
         .field = {
             .len = starting_distance + st.text.len + 2 /* additional 2 elements to hold the guy and can sprites */
@@ -125,16 +128,27 @@ TrashGuyState tguy_init(CString text, int starting_distance) {
     st.field.arr[0] = st.sprite_can;
     tguy_clear_field(&st, 0);
     st.field.arr[1] = st.sprite_right;
-    { /* fill the array with ranges of the string representing whole utf-8 codepoints (up to 4 per element)*/
-        const char *it = text.str;
-        for (int i = 0; i < st.text.len; ++i) {
+    for (int i = 0; i < st.text.len; ++i) {
+        st.text.arr[i] = arr[i];
+    }
+    return st;
+}
+
+/*
+ * initialize state from utf-8 string (each codepoint will be used as an element)
+ */
+TrashGuyState tguy_init_str(const char *string, size_t len, int starting_distance) {
+    TrashField tf = {.len = utf8_distance(&string[0], &string[len])};
+    { /* fill the array with ranges of the string representing whole utf-8 codepoints (up to 4 per element) */
+        const char *it = string;
+        for (int i = 0; i < tf.len; i++) {
             const char *next;
-            next = utf8_next(it, &text.str[text.len]);
-            st.text.arr[i] = (CString) {it, next - it};
+            next = utf8_next(it, &string[len]);
+            tf.arr[i] = (CString) {it, next - it};
             it = next;
         }
     }
-    return st;
+    return tguy_init_arr(tf.arr, tf.len, starting_distance);
 }
 
 void tguy_print(const TrashGuyState *st) {
@@ -150,8 +164,7 @@ int main(int argc, char *argv[]) {
         return EXIT_FAILURE;
     }
     {
-        CString input = {argv[1], strlen(argv[1])};
-        TrashGuyState st = tguy_init(input, 4);
+        TrashGuyState st = tguy_init_str(argv[1], strlen(argv[1]), 4);
 
         for (size_t i = 0; i < st.max_frames; i++) {
             tguy_from_frame(&st, i);

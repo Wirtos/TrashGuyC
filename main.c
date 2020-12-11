@@ -128,7 +128,7 @@ TrashGuyState tguy_init_arr(const CString arr[], size_t len, int starting_distan
     st.field.arr[0] = st.sprite_can;
     tguy_clear_field(&st, 0);
     st.field.arr[1] = st.sprite_right;
-    for (int i = 0; i < st.text.len; ++i) {
+    for (int i = 0; i < st.text.len; i++) {
         st.text.arr[i] = arr[i];
     }
     return st;
@@ -152,7 +152,7 @@ TrashGuyState tguy_init_str(const char *string, size_t len, int starting_distanc
 }
 
 void tguy_print(const TrashGuyState *st) {
-    for (size_t i = 0; i < st->field.len; ++i) {
+    for (size_t i = 0; i < st->field.len; i++) {
         putsn(st->field.arr[i].str, st->field.arr[i].len);
     }
     putchar('\n');

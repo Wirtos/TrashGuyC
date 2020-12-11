@@ -27,23 +27,26 @@ typedef struct {
 
 typedef struct {
     int a1;
+    CString sprite_right, sprite_left, sprite_can;
+    TrashField text;
+    TrashField field;
     size_t cur_frame;
     size_t max_frames;
-    CString sprite_right, sprite_left, sprite_can;
-    CString text;
-    TrashField field;
 } TrashGuyState;
 
 static inline void putsn(const char *str, size_t n) { while (n--) putchar(*str++); }
 
 /*
  * Clear the field(including the guy) and remove the first n chars of the string
- * todo: use a grapheme array
  */
 static inline void tguy_clear_field(TrashGuyState *st, size_t n) {
     size_t i = 1;
-    for (size_t j = 0; j < (st->a1 / 2) + n; i++, j++) st->field.arr[i] = CStringConst(" ");
-    for (size_t j = n; j < st->text.len; j++, i++) st->field.arr[i] = (CString) {&st->text.str[j], 1};
+    for (size_t j = 0; j < (st->a1 / 2) + n; i++, j++) {
+        st->field.arr[i] = CStringConst(" ");
+    }
+    for (size_t j = n; j < st->text.len; j++, i++) {
+        st->field.arr[i] = st->text.arr[j];
+    }
 }
 
 /*
@@ -74,28 +77,63 @@ void tguy_from_frame(TrashGuyState *st, size_t frame) {
         st->field.arr[i + 1] = right ? st->sprite_right : st->sprite_left;
         /* Draw the element trashguy holds */
         if (!right && i != 0) {
-            st->field.arr[i] = (CString) {&st->text.str[n], 1}; /* todo: don't. use the array. */
+            st->field.arr[i] = st->text.arr[n];
         }
     }
 }
 
+static inline const char *utf8_next(const char *begin, const char *end) {
+    if (begin == end) {
+        return NULL;
+    }
+
+    if ((*begin & 0x80) == 0x0) {
+        begin += 1;
+    } else if ((*begin & 0xE0) == 0xC0) {
+        begin += 2;
+    } else if ((*begin & 0xF0) == 0xE0) {
+        begin += 3;
+    } else if ((*begin & 0xF8) == 0xF0) {
+        begin += 4;
+    }
+
+    return begin;
+}
+
+static inline size_t utf8_distance(const char *begin, const char *end) {
+    size_t dist = 0;
+    while ((begin = utf8_next(begin, end))) dist++;
+    return dist;
+}
+
 TrashGuyState tguy_init(CString text, int starting_distance) {
     TrashGuyState st = {
+        .a1 = (starting_distance + 1) * 2,
         .sprite_right = CStringConst("(> ^_^)>"),
         .sprite_left = CStringConst("<(^_^ <)"),
         .sprite_can = CStringConst("\xf0\x9f\x97\x91"),
-        .a1 = (starting_distance + 1) * 2,
-        .cur_frame = 0, /* currently unused */
-        .field = {
-            .len = starting_distance + text.len + 2
+        .text = {
+            .len = utf8_distance(&text.str[0], &text.str[text.len])
         },
-        .max_frames = get_frame_lower_boundary(st.a1, text.len) + 1, /* number of frames up to the last + 1 */
-        .text = text /* should use an array of containers instead */
+        .field = {
+            .len = starting_distance + st.text.len + 2 /* additional 2 elements to hold the guy and can sprites */
+        },
+        .cur_frame = 0, /* currently unused */
+        .max_frames = get_frame_lower_boundary(st.a1, st.text.len) + 1, /* number of frames up to the last + 1 */
     };
 
     st.field.arr[0] = st.sprite_can;
     tguy_clear_field(&st, 0);
     st.field.arr[1] = st.sprite_right;
+    { /* fill the array with ranges of the string representing whole utf-8 codepoints (up to 4 per element)*/
+        const char *it = text.str;
+        for (int i = 0; i < st.text.len; ++i) {
+            const char *next;
+            next = utf8_next(it, &text.str[text.len]);
+            st.text.arr[i] = (CString) {it, next - it};
+            it = next;
+        }
+    }
     return st;
 }
 

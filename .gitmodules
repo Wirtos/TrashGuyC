@@ -1,0 +1,3 @@
+[submodule "libtguy"]
+	path = libtguy
+	url = https://github.com/Wirtos/libtguy.git

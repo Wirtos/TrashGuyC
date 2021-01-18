@@ -18,7 +18,7 @@ void tsleep(long int ms) {
 }
 
 int main(int argc, char *argv[]) {
-    TrashGuyState st;
+    TrashGuyState *st;
     if (argc == 2) {
         st = tguy_init_str(argv[1], strlen(argv[1]), 4);
     } else if (argc > 2) {
@@ -42,12 +42,13 @@ int main(int argc, char *argv[]) {
     }
     setvbuf(stdout, NULL, _IONBF, 0);
     {
-        for (int i = 0; i < st.max_frames; i++) {
-            tguy_from_frame(&st, i);
-            tguy_print(&st);
+        for (int i = 0, frames = tguy_get_frames_count(st); i < frames; i++) {
+            tguy_from_frame(st, i);
+            tguy_print(st);
             putchar('\r');
             tsleep(500);
         }
     }
+    tguy_free(st);
     return EXIT_SUCCESS;
 }
